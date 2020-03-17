@@ -113,7 +113,7 @@ using JSON format:
           "text": "Text from line 1"
         },
         {
-          "number": 1,
+          "number": 2,
           "text": "Text from line 2"
         }
       ]
@@ -176,6 +176,8 @@ This text format is also readable.
 Maybe less readable than JSON and a litle bit more verbose.
 XML is does not have any primitive types, instead the data is treated as text, so there
 is no difference between: `Text`,`true` or `1`.
+However, XML does have schemas which can define types used in the XML document, but in this example
+we will not go into that topic.
 
 ## But there are so many formats, which one should I use?
 
@@ -214,17 +216,18 @@ We will keep using our `Book` class and work with this class.
 
 Who the hell is Jackson?
 
-
 Jackson is a library that is mainly used for JSON manipulations.
 It has many advanced usages such as JSON streaming but we will be looking into the simple
 parts of this library.
+
+## JSON
 
 For this example, you can open up `JacksonExample.java`.
 
 The class contains following code:
 
 ```java
-package io.github.zukkari.examples;
+package io.github.zukkari.examples.jackson;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.zukkari.data.Book;
@@ -292,7 +295,80 @@ In order to fix that, we can use the pretty printing writer, which produces pret
 final String bookAsJson = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(book);
 ```
 
-So this is a very short introduction how to use the Jackson object mapper to produce JSON format. 
+## XML
+
+For XML example check `JacksonXMLExample.java`.
+This example has almost no difference with the JSON example, except that we now use `XMLMapper` class
+in order to serialize our book class:
+
+````java
+package io.github.zukkari.examples.jackson;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import io.github.zukkari.data.Book;
+import io.github.zukkari.generator.BookGenerator;
+
+public class JacksonXMLExample {
+    public static void main(String[] args) throws Exception {
+        // Create book that we want to serialize
+        final Book book = BookGenerator.generate();
+
+        // Create an instance of class that will serialize our book
+        // Note that we now use XMLMapper instead of ObjectMapper
+        final ObjectMapper objectMapper = new XmlMapper();
+
+        // Serialize the book
+        final String bookAsJson = objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(book);
+
+        // Print out the resulting book in JSON format
+        System.out.println(bookAsJson);
+    }
+}
+````
+
+And as a result this produces:
+
+```xml
+<Book>
+  <author>Book author</author>
+  <title>Book title</title>
+  <pages>
+    <pages>
+      <number>0</number>
+      <lines>
+        <lines>
+          <number>0</number>
+          <text>1c634e84-d607-4999-90a6-def99717c9d0</text>
+        </lines>
+        <lines>
+          <number>1</number>
+          <text>1fb811cb-6ebf-4f32-9cdf-6cd92fa8b671</text>
+        </lines>
+      </lines>
+    </pages>
+    <pages>
+      <number>1</number>
+      <lines>
+        <lines>
+          <number>0</number>
+          <text>851fec05-cf20-48f6-b85a-bf54e1e5956c</text>
+        </lines>
+        <lines>
+          <number>1</number>
+          <text>b2f28471-4537-47a5-ad55-d240bb5dcfef</text>
+        </lines>
+      </lines>
+    </pages>
+  </pages>
+  <released>false</released>
+</Book>
+```
+
+Which is exactly one expected XML would look!
+
+So this is a very short introduction how to use the Jackson object mapper to produce JSON and XML format. 
 
 # Gson
 
@@ -301,10 +377,12 @@ Okay, first we had Jackson and now Gson?
 Gson is library made by Google.
 Well, its not like Gmail is enough for us, we can use Google to serialize our objects as well.
 
+## JSON
+
 Example using Gson:
 
 ```java
-package io.github.zukkari.examples;
+package io.github.zukkari.examples.gson;
 
 import com.google.gson.Gson;
 import io.github.zukkari.data.Book;
@@ -332,8 +410,222 @@ And viola, this produces exactly the same output as Jackson (well this kind of m
 {"author":"Book author","title":"Book title","pages":[{"number":0,"lines":[{"number":0,"text":"23ce7819-d7a8-4489-b619-70cf0b62b738"},{"number":1,"text":"a50ae21c-1d2f-43af-881a-ae352ea26110"}]},{"number":1,"lines":[{"number":0,"text":"fbd630cf-df55-4512-a47e-778959c28cce"},{"number":1,"text":"7759153d-d9d8-4b02-8bea-9d661dfaa9e5"}]}],"released":false}
 ```
 
-So what is the difference between those two?
+## XML
+
+Unlike Jackson, Gson does not support XML serialization out of the box.
+However, there is a module that does supports this, although this is not official.
+The module for Gson XML can be found [here](https://github.com/stanfy/gson-xml).
+It provides some examples how it can be used, but I would not recommend to use Gson for XML.
+
+And since Gson does not support XML serialization out of the box, we can see that this is one of the differences
+between Gson and Jackson.
+
+So are there any more differences between those two?
 Which one should I use?
 
 ## Differences between Jackson and Gson
+
+As you could see both of the libraries produce similar result using similar amount
+of lines of code.
+For basic use cases, there is no difference which library to use since performance
+differences are very small.
+
+However, for advanced use cases, such as custom field mapping or custom serialization
+structure, those libraries are configured very differently.
+
+Further we will explore how can we create custom mappings and also see why we would need to do that.
+
+## How does this work?
+
+You might have a question, how does this even work? 
+How does Gson or Jackson know what fields to serialize into JSON
+and what names should it use for serialization?
+
+Well to put it simply, if we dont give any directions on how to map our class,
+those libraries simply look at the field types and field names inside the class
+and serialize accordingly.
+
+However, it is possibly to alternate the way classes are serialized and we will see this in the next section.
+
+## Advanced mapping
+
+Since the instructions for XML are similar to JSON for Jackson, and Gson does not support XML out of the box,
+we will continue or examples using JSON.
+
+Suppose we have the following scenario.
+We work in an Estonian company called L33T code, and we write code in Estonian.
+This means that our classes and field names are named in Estonian.
+But we provide our services to customers outside of Estonia.
+For example, we would like to expose our user class, which represents a user in our system.
+
+```java
+public class Kasutaja {
+    private String kasutajanimi;
+    private String parool;
+
+    private int kasutajaStaatus;
+    
+    private boolean aktiivneKasutaja;
+
+    public String getKasutajanimi() {
+        return kasutajanimi;
+    }
+
+    public void setKasutajanimi(String kasutajanimi) {
+        this.kasutajanimi = kasutajanimi;
+    }
+
+    public String getParool() {
+        return parool;
+    }
+
+    public void setParool(String parool) {
+        this.parool = parool;
+    }
+
+    public int getKasutajaStaatus() {
+        return kasutajaStaatus;
+    }
+
+    public void setKasutajaStaatus(int kasutajaStaatus) {
+        this.kasutajaStaatus = kasutajaStaatus;
+    }
+
+    public boolean isAktiivneKasutaja() {
+        return aktiivneKasutaja;
+    }
+
+    public void setAktiivneKasutaja(boolean aktiivneKasutaja) {
+        this.aktiivneKasutaja = aktiivneKasutaja;
+    }
+}
+```
+
+And now if we try to serialize this class we would get the following output:
+
+```json
+{
+  "kasutajanimi": "Username1",
+  "parool": "hunter2",
+  "kasutajaStaatus": 3,
+  "aktiivneKasutaja": true
+}
+```
+
+Ouch, we just exposed our users password.
+And the field names are in Estonian.
+How can we change the mapping pattern so that the field names would be in English and we would not leak the password?
+
+## Advanced mapping with Jackson
+
+Jackson serialization process is mostly controlled using annotations.
+Annotations are special Java classes, which we will talk about in later sessions.
+What you currently need to know is that annotations allow you to annotate parts of your code like so:
+
+```java
+@MyCustomAnnotation
+class MyClass {
+}
+```
+
+Annotations by themselves don't do anything so now we will explore hoes does Jackson use those annotations.
+
+Currently we have 2 objectives:
+1. We want to hide the user password in serialized user model
+1. We want to translate field names into English, so that our colleagues could understand the meaning of the fields
+
+For the first objective, Jackson provides the following annotation `@JsonIgnore` which simply ignore the property
+during the serialization process.
+In order to use it, we just need to annotate the field that we want to ignore:
+
+```java
+@JsonIgnore
+private String parool;
+```
+
+And viola, user does not have password anymore when serialized:
+```json
+{
+  "kasutajanimi": "Username1",
+  "kasutajaStaatus": 3,
+  "aktiivneKasutaja": true
+}
+```
+
+Now to the next objective!
+
+We need to translate the fields.
+Fortunately, Jackson already provides an opportunity to rename fields in the JSON using: `@JsonProperty` annotation.
+
+Usage is also pretty straight forward:
+```java
+@JsonProperty(value = "username")
+private String kasutajanimi;
+```
+
+Now lets put it all together:
+```java
+public class Kasutaja {
+    @JsonProperty(value = "username")
+    private String kasutajanimi;
+
+    @JsonIgnore
+    private String parool;
+
+    @JsonProperty(value = "userstatus")
+    private int kasutajaStaatus;
+
+    @JsonProperty(value = "isActiveUser")
+    private boolean aktiivneKasutaja;
+
+    public String getKasutajanimi() {
+        return kasutajanimi;
+    }
+
+    public void setKasutajanimi(String kasutajanimi) {
+        this.kasutajanimi = kasutajanimi;
+    }
+
+    public String getParool() {
+        return parool;
+    }
+
+    public void setParool(String parool) {
+        this.parool = parool;
+    }
+
+    public int getKasutajaStaatus() {
+        return kasutajaStaatus;
+    }
+
+    public void setKasutajaStaatus(int kasutajaStaatus) {
+        this.kasutajaStaatus = kasutajaStaatus;
+    }
+
+    public boolean isAktiivneKasutaja() {
+        return aktiivneKasutaja;
+    }
+
+    public void setAktiivneKasutaja(boolean aktiivneKasutaja) {
+        this.aktiivneKasutaja = aktiivneKasutaja;
+    }
+}
+```
+
+which provides output of: 
+```json
+{
+  "username": "Username1",
+  "userstatus": 3,
+  "isActiveUser": true
+}
+```
+
+Which is exactly what we wanted to achieve.
+
+Now lets see how can we achieve similar result using Gson.
+
+## Advanced mapping with Gson 
+
+## Consuming serialized data through the network
 
