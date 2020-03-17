@@ -623,9 +623,98 @@ which provides output of:
 
 Which is exactly what we wanted to achieve.
 
+## Advanced mapping with Gson 
+
 Now lets see how can we achieve similar result using Gson.
 
-## Advanced mapping with Gson 
+While Jackson controls the serialization through annotations, Gson takes more programmatic approach.
+As you might have noticed, adding annotations means that there is only one way to serialize your object.
+
+Gson allows you to have multiple ways to serialize a single class.
+Let's implement custom serializer for our `Kasutaja` class, so that we can solve 
+the same problems as we did with Jackson.
+
+In order to create custom serialization structure for class `T`, we need to create a class that
+implements `JsonSerializer<T>`.
+
+Interface declarations looks pretty simple: 
+```java
+public interface JsonSerializer<T> {
+    JsonElement serialize(T src, Type typeOfSrc, JsonSerializationContext context);
+    }
+}
+```
+
+So lets implement it for our `Kasutaja` class.
+
+Complete implementation might look similar to this:
+
+```java
+public class KasutajaSerializer implements JsonSerializer<Kasutaja> {
+    @Override
+    public JsonElement serialize(Kasutaja kasutaja, Type type, JsonSerializationContext jsonSerializationContext) {
+        // Create new JSON object which will act
+        // as a root to our tree (this represents Kasutaja object itself)
+        JsonObject jsonObject = new JsonObject();
+        
+        // Add username property
+        jsonObject.addProperty("username", kasutaja.getKasutajanimi());
+        
+        // Add user status
+        jsonObject.addProperty("userstatus", kasutaja.getKasutajaStaatus());
+
+        // Add active user poperty
+        jsonObject.addProperty("isActiveUser", kasutaja.isAktiivneKasutaja());
+        
+        return jsonObject;
+    }
+}
+```
+
+As you can see the approach is quite different, here we get much more freedom
+in what do we actually put into the JSON object.
+
+And then to actually use this serializer, we need to register it when creating Gson object.
+So now instead of creating `Gson` instance directly, we will use `GsonBuilder` instead:
+
+```java
+package io.github.zukkari.examples.gson;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+public class GsonAdvancedExample {
+    public static void main(String[] args) {
+        Kasutaja kasutaja = new Kasutaja();
+        kasutaja.setKasutajanimi("Username1");
+        kasutaja.setParool("hunter2");
+        kasutaja.setKasutajaStaatus(3);
+        kasutaja.setAktiivneKasutaja(true);
+
+        Gson gson = new GsonBuilder()
+                // Register our KasutajaSerializer class here
+                .registerTypeAdapter(Kasutaja.class, new KasutajaSerializer())
+                .create();
+
+        String userAsJson = gson.toJson(kasutaja);
+
+        System.out.println(userAsJson);
+    }
+}
+```
+
+And the output looks similar to Jackson:
+
+```json
+{
+  "username": "Username1",
+  "userstatus": 3,
+  "isActiveUser": true
+}
+```
+
+So as you can see, the tools are quite different but produce the same results.
+Again it is up to you, which one do you prefer and which one do you want to use.
 
 ## Consuming serialized data through the network
 
