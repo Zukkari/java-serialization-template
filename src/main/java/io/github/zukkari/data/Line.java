@@ -1,6 +1,8 @@
 package io.github.zukkari.data;
 
-public class Line {
+import java.io.Serializable;
+
+public class Line implements Serializable {
 	private int number;
 	private String text;
 
@@ -19,4 +21,12 @@ public class Line {
 	public void setText(String text) {
 		this.text = text;
 	}
+
+    @Override
+    public String toString() {
+        return "Line{" +
+                "number=" + number +
+                ", text='" + text + '\'' +
+                '}';
+    }
 }

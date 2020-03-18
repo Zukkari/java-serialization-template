@@ -1,8 +1,9 @@
 package io.github.zukkari.data;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Page {
+public class Page implements Serializable {
 	private int number;
 	private List<Line> lines;
 
@@ -21,4 +22,12 @@ public class Page {
 	public void setLines(List<Line> lines) {
 		this.lines = lines;
 	}
+
+    @Override
+    public String toString() {
+        return "Page{" +
+                "number=" + number +
+                ", lines=" + lines +
+                '}';
+    }
 }

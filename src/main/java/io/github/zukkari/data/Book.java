@@ -1,8 +1,9 @@
 package io.github.zukkari.data;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Book {
+public class Book implements Serializable {
 	private String author;
 	private String title;
 	private List<Page> pages;
@@ -40,4 +41,14 @@ public class Book {
 	public void setReleased(boolean released) {
 		this.released = released;
 	}
+
+    @Override
+    public String toString() {
+        return "Book{" +
+                "author='" + author + '\'' +
+                ", title='" + title + '\'' +
+                ", pages=" + pages +
+                ", released=" + released +
+                '}';
+    }
 }

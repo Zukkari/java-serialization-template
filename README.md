@@ -23,12 +23,12 @@ in order to serialize the data into the stream in a way that we could read it ba
 So we did something similar in order to serialize the data:
 ```java
 class Writer {
-	public static void main(String[] args) throws Exception {
-		try (final DataOutputStream outputStream = new DataOutputStream(new FileOutputStream("test.txt"))) {
-			outputStream.writeInt(1);
-			outputStream.writeUTF("Hello, world!");
-		}
-	}
+    public static void main(String[] args)  {
+        try (final DataOutputStream outputStream = new DataOutputStream(new FileOutputStream("test.txt"))) {
+            outputStream.writeInt(1);
+            outputStream.writeUTF("Hello, world!");
+        }
+    }
 }
 ```
 
@@ -36,15 +36,15 @@ And then we could read it back later:
 
 ```java
 class Reader {
-	public static void main(String[] args) throws Exception {
-		try (final DataInputStream inputStream = new DataInputStream(new FileInputStream("test.txt"))) {
-			final int number = inputStream.readInt();
-			final String message = inputStream.readUTF();
+    public static void main(String[] args)  {
+        try (final DataInputStream inputStream = new DataInputStream(new FileInputStream("test.txt"))) {
+            final int number = inputStream.readInt();
+            final String message = inputStream.readUTF();
 
-			System.out.println(number);
-			System.out.println(message);
-		}
-	}
+            System.out.println(number);
+            System.out.println(message);
+        }
+    }
 }
 ```
 
@@ -56,19 +56,19 @@ Imagine if we had a following class structure that we wanted to serialize:
 
 ```java
 class Book {
-	String author;
-	String title;
-	List<Page> pages;
+    String author;
+    String title;
+    List<Page> pages;
 }
 
 class Page {
-	int number;
-	List<Line> lines;
+    int number;
+    List<Line> lines;
 }
 
 class Line {
-	int number;
-	String text;
+    int number;
+    String text;
 }
 ```
 
@@ -201,7 +201,77 @@ How does this even help? We are using Java after all, why would we care about JS
 Well, what if I told you that whole serialization and deserialization process
 can be automated, and you would't need to worry how can you serialize class `X` or `Y`?
 
-Of course, we can automate this process and for this purpose we will be looking into 2 libraries:
+For example, Java provides serialization and deserialization mechanism out of the box:
+
+```java
+package io.github.zukkari.examples.object;
+
+import io.github.zukkari.data.Book;
+import io.github.zukkari.generator.BookGenerator;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public class ObjectStreamExample {
+    public static void main(String[] args) throws Exception {
+        Path tempFile = Files.createTempFile("java_object", null);
+        System.out.printf("Writing to file: %s\n", tempFile.toAbsolutePath());
+
+        Book book = BookGenerator.generate();
+
+        // Write the object to file
+        try (var stream = new ObjectOutputStream(new FileOutputStream(tempFile.toFile()))) {
+            stream.writeObject(book);
+        }
+
+        try (var stream = new ObjectInputStream(new FileInputStream(tempFile.toFile()))) {
+            // Read the object back from the stream
+            // and cast the object to the book instance
+            final Book inputBook = (Book) stream.readObject();
+
+            System.out.println(inputBook);
+        }
+    }
+}
+```
+
+Output: 
+
+```
+Book{author='Book author', title='Book title', pages=[Page{number=0, lines=[Line{number=0, text='fda2e223-c371-429f-af41-446291c05e96'}, Line{number=1, text='fabd264b-ae09-4e39-9cef-3586e1d1d39e'}]}, Page{number=1, lines=[Line{number=0, text='582d2fa7-4c36-4800-a0b4-0af1c25a64a1'}, Line{number=1, text='65af1e38-1233-450a-9c95-5ae14580753f'}]}], released=false}
+```
+
+Yeah this approach works and allows us to serialize object.
+
+But there are multiple problems with this approach.
+
+Firstly, all of the classes that are being written must implement `Serializable` interface.
+This is a problem when you are using a class that you have not created yourself.
+
+Secondly, what if you need to modify the object? 
+How will you read back old version of the object into the new model?
+
+Finally, what if you want to send this data over the network?
+How will the consumer application read this object?
+Lets look inside the file in order to see what Java wrote:
+
+```
+¬ķ sr io.github.zukkari.data.Book~;H­G“ŠĖ Z releasedL authort Ljava/lang/String;L pagest Ljava/util/List;L titleq ~ xp t Book authorsr java.util.ArrayListxŅ™Ēa¯ I sizexp   w   sr io.github.zukkari.data.Paget$‹¸źkO I numberL linesq ~ xp    sq ~    w   sr io.github.zukkari.data.Line€kZāH„³ I numberL textq ~ xp    t $fda2e223-c371-429f-af41-446291c05e96sq ~ 
+   t $fabd264b-ae09-4e39-9cef-3586e1d1d39exsq ~    sq ~    w   sq ~ 
+    t $582d2fa7-4c36-4800-a0b4-0af1c25a64a1sq ~ 
+   t $65af1e38-1233-450a-9c95-5ae14580753fxxt 
+Book title
+```
+
+What the hell is this? How the hell is consumer application supposed to understand this?
+
+I hope you can see the problems here and here we will explore alternative and more standardized ways to serialize the data.
+
+We will investigate the solutions using two libraries for Java:
 [Jackson](https://github.com/FasterXML/jackson) and [Gson](https://github.com/google/gson).
 
 Let's jump straight in and see how we can serialize and deserialize stuff using those two libraries.
@@ -234,20 +304,20 @@ import io.github.zukkari.data.Book;
 import io.github.zukkari.generator.BookGenerator;
 
 public class JacksonExample {
-	public static void main(String[] args) throws Exception {
-		// Create book that we want to serialize
-		final Book book = BookGenerator.generate();
+    public static void main(String[] args) throws Exception {
+        // Create book that we want to serialize
+        final Book book = BookGenerator.generate();
 
-		// Create an instance of class that will serialize our book
-		final ObjectMapper objectMapper = new ObjectMapper();
+        // Create an instance of class that will serialize our book
+        final ObjectMapper objectMapper = new ObjectMapper();
 
-		// Serialize the book
-		final String bookAsJson = objectMapper.writerWithDefaultPrettyPrinter()
-				.writeValueAsString(book);
+        // Serialize the book
+        final String bookAsJson = objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsString(book);
 
-		// Print out the resulting book in JSON format
-		System.out.println(bookAsJson);
-	}
+        // Print out the resulting book in JSON format
+        System.out.println(bookAsJson);
+    }
 }
 ```
 
@@ -389,19 +459,19 @@ import io.github.zukkari.data.Book;
 import io.github.zukkari.generator.BookGenerator;
 
 public class GsonExample {
-	public static void main(String[] args) {
-		// Create book that we want to serialize
-		final Book book = BookGenerator.generate();
+    public static void main(String[] args) {
+        // Create book that we want to serialize
+        final Book book = BookGenerator.generate();
 
-		// Create an instance of class that will serialize our book
-		final Gson gson = new Gson();
+        // Create an instance of class that will serialize our book
+        final Gson gson = new Gson();
 
-		// Serialize the book
-		final String bookAsJson = gson.toJson(book);
+        // Serialize the book
+        final String bookAsJson = gson.toJson(book);
 
-		// Print out the resulting book in JSON format
-		System.out.println(bookAsJson);
-	}
+        // Print out the resulting book in JSON format
+        System.out.println(bookAsJson);
+    }
 }
 ```
 
@@ -717,4 +787,277 @@ So as you can see, the tools are quite different but produce the same results.
 Again it is up to you, which one do you prefer and which one do you want to use.
 
 ## Consuming serialized data through the network
+
+So far we have seen how to produce structured data.
+What about consuming the data?
+
+Now we can finally explore the part where we consume the data.
+For that we will be using [Estonian Weather service](http://www.ilmateenistus.ee/?lang=en).
+
+They provide various types of information (forecasts, current weather state, warnings etc).
+Remember what I told you about web formats?
+I think I said something in the lines of "XML is legacy and is not widely used".
+And you guessed it right, Estonian Weather Service uses XML to serve its data.
+
+Since previously we focused mostly on JSON, now we will explore XML.
+Remember that previously I showed that consuming JSON and XML is pretty similar, so
+I am sure you will be able to figure out how to consume JSON on your own ;)
+
+Firstly lets look at the data that they provide.
+We will be looking at current weather observations which can be found [here](http://www.ilmateenistus.ee/ilma_andmed/xml/observations.php).
+
+We can see that there is root node `observations`, which represents the list of observations.
+
+Next, we can see that there is list of stations which are represented by `station` nodes.
+Stations then have various attributes such as name (place where observation was made),
+coordinates, temperature etc.
+
+For simplicity, lets say that we are interested in the following attributes:
+- name (String)
+- airpressure (Double)
+- relativehumidity (Double)
+- airtemperature (Double)
+- winddirection (Double, in degrees)
+- windspeed (Double)
+
+Now that we have analyzed the structure, lets create Java classes that will represent this structure 
+in our code.
+
+It looks that there two entities that we need to create to handle this data:
+- `Observations` will hold our list of stations
+- `Station` which contains attributes of station nodes that we are interested in
+
+Translating the following to Java:
+
+```java
+package io.github.zukkari.examples.consuming.weather;
+
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+
+import java.util.List;
+
+@JacksonXmlRootElement(localName = "observations")
+public class Observations {
+
+    @JacksonXmlProperty(localName = "timestamp")
+    // attribute with name "timestamp" to know the time of observation
+    private Integer timestamp;
+
+    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlProperty(localName = "station")
+    private List<Station> stations;
+
+    // List of stations
+    public List<Station> getStations() {
+        return stations;
+    }
+
+    public void setStations(List<Station> stations) {
+        this.stations = stations;
+    }
+
+    public Integer getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Integer timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    @Override
+    public String toString() {
+        return "Observations{" +
+                "timestamp=" + timestamp +
+                ", stations=" + stations +
+                '}';
+    }
+}
+```
+
+```java
+package io.github.zukkari.examples.consuming.weather;
+
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+
+public class Station {
+    @JacksonXmlProperty(localName = "name")
+    private String name;
+
+    @JacksonXmlProperty(localName = "airpressure")
+    private Double airPressure;
+
+    @JacksonXmlProperty(localName = "relativehumidity")
+    private Double relativeHumidity;
+
+    @JacksonXmlProperty(localName = "airtemperature")
+    private Double temperature;
+
+    @JacksonXmlProperty(localName = "winddirection")
+    private Double windDirection;
+
+    @JacksonXmlProperty(localName = "windspeed")
+    private Double windSpeed;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Double getAirPressure() {
+        return airPressure;
+    }
+
+    public void setAirPressure(Double airPressure) {
+        this.airPressure = airPressure;
+    }
+
+    public Double getRelativeHumidity() {
+        return relativeHumidity;
+    }
+
+    public void setRelativeHumidity(Double relativeHumidity) {
+        this.relativeHumidity = relativeHumidity;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public void setTemperature(Double temperature) {
+        this.temperature = temperature;
+    }
+
+    public Double getWindDirection() {
+        return windDirection;
+    }
+
+    public void setWindDirection(Double windDirection) {
+        this.windDirection = windDirection;
+    }
+
+    public Double getWindSpeed() {
+        return windSpeed;
+    }
+
+    public void setWindSpeed(Double windSpeed) {
+        this.windSpeed = windSpeed;
+    }
+
+    @Override
+    public String toString() {
+        return "Station{" +
+                "name='" + name + '\'' +
+                ", airPressure=" + airPressure +
+                ", relativeHumidity=" + relativeHumidity +
+                ", temperature=" + temperature +
+                ", windDirection=" + windDirection +
+                ", windSpeed=" + windSpeed +
+                '}';
+    }
+}
+```
+
+As you can see the, mapping is pretty similar to JSON, although the annotations are a little bit different.
+
+Previously we have been sending that over the network using sockets.
+As you might have noticed, sockets are quite low level and web servers use
+higher level of abstraction to communicate over the web: [HTTP](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol).
+
+Now that we have set up our model, we need to fetch it from the link somehow.
+Here we will use `HttpClient` from Java standard library, which uses HTTP.
+
+```java
+package io.github.zukkari.examples.consuming;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+import io.github.zukkari.examples.consuming.weather.Observations;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
+public class JacksonXMLWebExample {
+    public static void main(String[] args) throws IOException, InterruptedException {
+        // Create the mapper that will transform XML into our Java object
+        ObjectMapper mapper = new XmlMapper();
+        // Disable feature that fails on unknown properties
+        // This is needed because we dont need all of the properties
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        // Create HTTP client
+        var client = HttpClient.newHttpClient();
+
+        // Create a request that we will send over the network
+        var request = HttpRequest.newBuilder()
+                // URL that we will fetch the data from
+                .uri(URI.create("http://www.ilmateenistus.ee/ilma_andmed/xml/observations.php"))
+                // We have to set this header for this call, otherwise
+                // Estonian Weather Service will not send us the response
+                .header("User-Agent", "Mozilla/5.0")
+                // HTTP method that specifies that we want to get the information
+                .GET()
+                .build();
+
+        // Send the request over the network
+        HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+        // Read the Inputstream of the response into our Observations class
+        Observations observations = mapper.readValue(response.body(), Observations.class);
+
+        // Print out the result
+        System.out.println(observations);
+    }
+}
+```
+
+There are few important bits in this code, let's go over them.
+
+Firstly, we have to disable failure on unknown properties:
+
+```java
+mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+```
+
+This is needed because if we don't disable this, Jackson will fail with an exception since
+it does not know what to do with properties that are not present in our model.
+
+Secondly, we need to include 'User-Agent' header in our request, otherwise
+we will receive a 403 (Forbidden) response, since this web service expects you to identify
+yourself before responding:
+
+```java
+header("User-Agent", "Mozilla/5.0")
+```
+
+And then we need to deserialize byte array into our `Observations` class:
+
+```java
+Observations observations = mapper.readValue(response.body(), Observations.class);
+```
+
+We use the `readValue` method from `ObjectMapper` class, which takes an `InputStream` and type of the object
+that the mapper needs to deserialize this input stream into.
+
+This pretty much sums up a simple use case on how to consume web services using Java.
+
+## Exercise
+
+Using [Github API](https://developer.github.com/v3/) fetch the following information about your profile:
+- Your Github login name
+- URL to your Github profile
+- Number of public repositories
+- Date when your Github profile was created
+
+For this exercise your could either use either Gson or Jackson, whichever you prefer.
+However, for practice purposes, it might be useful to try Gson, since we have already used Jackson in an example.
 
