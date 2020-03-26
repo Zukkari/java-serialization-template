@@ -389,11 +389,11 @@ public class JacksonXMLExample {
         final ObjectMapper objectMapper = new XmlMapper();
 
         // Serialize the book
-        final String bookAsJson = objectMapper.writerWithDefaultPrettyPrinter()
+        final String bookAsXML = objectMapper.writerWithDefaultPrettyPrinter()
                 .writeValueAsString(book);
 
-        // Print out the resulting book in JSON format
-        System.out.println(bookAsJson);
+        // Print out the resulting book in XML format
+        System.out.println(bookAsXML);
     }
 }
 ````
