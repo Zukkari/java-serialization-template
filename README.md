@@ -475,7 +475,7 @@ public class GsonExample {
 }
 ```
 
-And viola, this produces exactly the same output as Jackson (well this kind of makes sense since JSON is standardized format):
+And voilà, this produces exactly the same output as Jackson (well this kind of makes sense since JSON is standardized format):
 ```
 {"author":"Book author","title":"Book title","pages":[{"number":0,"lines":[{"number":0,"text":"23ce7819-d7a8-4489-b619-70cf0b62b738"},{"number":1,"text":"a50ae21c-1d2f-43af-881a-ae352ea26110"}]},{"number":1,"lines":[{"number":0,"text":"fbd630cf-df55-4512-a47e-778959c28cce"},{"number":1,"text":"7759153d-d9d8-4b02-8bea-9d661dfaa9e5"}]}],"released":false}
 ```
@@ -613,7 +613,7 @@ In order to use it, we just need to annotate the field that we want to ignore:
 private String parool;
 ```
 
-And viola, user does not have password anymore when serialized:
+And voilà, user does not have password anymore when serialized:
 ```json
 {
   "kasutajanimi": "Username1",
